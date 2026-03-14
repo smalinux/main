@@ -494,3 +494,213 @@ A `pinctrl_state` IS a DT property. A `pinctrl` IS a node. No heap allocation fo
 | Driver ops required           | ~8 callbacks                                    | 1 callback (`set_state`)  |
 | `struct pinctrl` size         | Full object with states list, dt_maps, kref     | Just `device_node`        |
 | `struct pinctrl_state` size   | Object with settings list                       | Just `property` (DT prop) |
+
+---
+
+## Part 3 — What does `set_state` actually do? How does it map to Linux?
+
+### First: one pin or a group?
+
+`set_state` receives a **DT node** — in the rockchip case that node holds a property
+called `rockchip,pins` which is a **list of tuples**, one per pin.
+
+```dts
+uart0_pins: uart0-pins {
+    rockchip,pins =
+        <1  10  2  &pcfg_pull_up>,    /* bank=1, pin=10, mux=2, config=pull-up */
+        <1  11  2  &pcfg_pull_up>;    /* bank=1, pin=11, mux=2, config=pull-up */
+};
+```
+
+So `set_state` is called **once per group node**, but inside it loops over **every pin
+in that group**. It handles a group, not a single pin.
+
+---
+
+### What `set_state` does per pin, step by step
+
+For each `<bank  pin  mux  config_phandle>` tuple in the `rockchip,pins` list,
+barebox's `rockchip_pinctrl_set_state` does four things:
+
+```
+1. rockchip_set_mux(bank, pin_num, func)
+       → writes the IOMUX register: "connect this pad to peripheral X"
+
+2. rockchip_set_pull(bank, pin_num, parse_bias_config(np_config))
+       → writes the pull register: pull-up / pull-down / floating
+
+3. rockchip_set_gpio(bank, pin_num, parse_gpio_direction(np_config))
+       → if the config node says input-enable or output-high/low,
+         set the GPIO direction register
+
+4. rockchip_set_drive_perpin(bank, pin_num, drive_strength)   [if present]
+       → writes drive strength register
+
+5. rockchip_set_schmitt(bank, pin_num, ...)                   [if present]
+       → writes schmitt-trigger register
+```
+
+That is the complete job: **for every pin in the group, set mux + pull + direction +
+drive + schmitt directly in hardware registers.**
+
+---
+
+### What is the Linux equivalent of `set_state`?
+
+Linux splits this work across **two separate driver callbacks**, called from two
+separate places in the core:
+
+#### Callback 1: `set_mux` — handles only the IOMUX part
+
+Called from `pinmux_enable_setting()` inside `pinctrl_commit_state()`.
+
+```c
+/* Linux core calls this: */
+ops->set_mux(pctldev, func_selector, group_selector);
+
+/* Rockchip's implementation: */
+static int rockchip_pmx_set(struct pinctrl_dev *pctldev,
+                            unsigned selector,   /* func selector */
+                            unsigned group)      /* group selector */
+{
+    const unsigned int *pins = info->groups[group].pins;   /* pin list from probe-time parse */
+    const struct rockchip_pin_config *data = info->groups[group].data;
+
+    for (cnt = 0; cnt < info->groups[group].npins; cnt++) {
+        bank = pin_to_bank(info, pins[cnt]);
+        rockchip_set_mux(bank, pins[cnt] - bank->pin_base, data[cnt].func);
+        /*                                                  ↑
+                                    func value was stored at probe time
+                                    from parsing rockchip,pins in DT   */
+    }
+}
+```
+
+`set_mux` only sets the IOMUX register. Nothing else. No pull, no drive strength.
+It also uses pre-parsed data (`info->groups[group]`) — it does not touch the DT here.
+
+#### Callback 2: `pin_config_set` — handles pull, drive, schmitt per pin
+
+Called from `pinconf_apply_setting()` inside `pinctrl_commit_state()`, separately
+after all mux settings are applied.
+
+```c
+/* Linux core calls this once per pin: */
+ops->pin_config_set(pctldev, pin_number, configs[], num_configs);
+
+/* Rockchip's implementation: */
+static int rockchip_pinconf_set(struct pinctrl_dev *pctldev,
+                                unsigned int pin,
+                                unsigned long *configs,
+                                unsigned num_configs)
+{
+    for (i = 0; i < num_configs; i++) {
+        param = pinconf_to_config_param(configs[i]);
+        arg   = pinconf_to_config_argument(configs[i]);
+
+        switch (param) {
+        case PIN_CONFIG_BIAS_PULL_UP:
+            rockchip_set_pull(bank, pin - bank->pin_base, param);
+            break;
+        case PIN_CONFIG_DRIVE_STRENGTH:
+            rockchip_set_drive_perpin(bank, pin - bank->pin_base, arg);
+            break;
+        case PIN_CONFIG_INPUT_SCHMITT_ENABLE:
+            rockchip_set_schmitt(bank, pin - bank->pin_base, 1);
+            break;
+        ...
+        }
+    }
+}
+```
+
+`pin_config_set` only sets pull/drive/schmitt. Not the IOMUX. And it operates on
+**one pin at a time** — the core calls it in a loop over all pins in the group.
+The `configs[]` array it receives was built at probe time by
+`pinconf_generic_parse_dt_config()` which already read and converted all the config
+phandle properties into a packed `unsigned long` array.
+
+---
+
+### Side-by-side comparison for uart0_pins with 2 pins
+
+```
+DT:  uart0_pins { rockchip,pins = <1 10 2 &pcfg_pull_up>, <1 11 2 &pcfg_pull_up>; }
+```
+
+**Barebox** — one call to `set_state(pdev, uart0_pins_node)`:
+
+```
+set_state receives the uart0_pins node
+  Loop iteration 1 (pin 10):
+    read: bank=1, pin=10, func=2, config_phandle → np_config
+    rockchip_set_mux(bank1, 10, 2)           ← IOMUX register
+    rockchip_set_pull(bank1, 10, PULL_UP)    ← pull register
+  Loop iteration 2 (pin 11):
+    read: bank=1, pin=11, func=2, config_phandle → np_config
+    rockchip_set_mux(bank1, 11, 2)           ← IOMUX register
+    rockchip_set_pull(bank1, 11, PULL_UP)    ← pull register
+```
+
+**Linux** — three separate calls, each operating on pre-parsed data:
+
+```
+pinmux_enable_setting(setting)           ← setting has group_selector=7, func_selector=3
+  get_group_pins(group=7) → [pin10, pin11]
+  pin_request(pin10, "uart0")            ← usecount check
+  pin_request(pin11, "uart0")            ← usecount check
+  ops->set_mux(pctldev, func=3, group=7)
+    rockchip_pmx_set():
+      for pin10: rockchip_set_mux(bank1, 10, 2)   ← IOMUX register
+      for pin11: rockchip_set_mux(bank1, 11, 2)   ← IOMUX register
+
+pinconf_apply_setting(setting_for_pin10) ← separate setting, configs=[PULL_UP]
+  ops->pin_config_set(pctldev, pin=10, [PULL_UP], 1)
+    rockchip_pinconf_set():
+      rockchip_set_pull(bank1, 10, PULL_UP)        ← pull register
+
+pinconf_apply_setting(setting_for_pin11) ← separate setting, configs=[PULL_UP]
+  ops->pin_config_set(pctldev, pin=11, [PULL_UP], 1)
+    rockchip_pinconf_set():
+      rockchip_set_pull(bank1, 11, PULL_UP)        ← pull register
+```
+
+The hardware register writes at the bottom are **identical**. The difference is purely
+in how much scaffolding surrounds them.
+
+---
+
+### Where does the data come from in each case?
+
+This is the other key difference — barebox reads from DT at call time, Linux reads
+from pre-parsed arrays:
+
+| Data needed | Barebox source | Linux source |
+|---|---|---|
+| IOMUX function value (`2`) | Read from `rockchip,pins` in DT **right now** | `info->groups[group].data[cnt].func` — parsed at probe time into an array |
+| Pull-up/down | Read `pcfg_pull_up` phandle → node → property **right now** | `configs[]` array — built at probe time by `pinconf_generic_parse_dt_config()` |
+| Drive strength | Read `drive-strength` from config node **right now** | Same `configs[]` array |
+| Which pins are in the group | Read `rockchip,pins` count **right now** | `info->groups[group].pins[]` — allocated and filled at probe time |
+
+---
+
+### Summary: `set_state` = `set_mux` + `pin_config_set` + DT reading, all in one
+
+```
+barebox set_state(pdev, np)
+  │
+  ├── reads DT on the fly          ← Linux does this at probe time
+  │
+  ├── loops over all pins          ← Linux core does this in pinmux_enable_setting
+  │                                   and pinconf_apply_setting
+  │
+  ├── rockchip_set_mux()           ← same as Linux's set_mux doing rockchip_set_mux()
+  │
+  └── rockchip_set_pull()          ← same as Linux's pin_config_set doing rockchip_set_pull()
+      rockchip_set_drive_perpin()
+      rockchip_set_schmitt()
+```
+
+The actual hardware-touching functions (`rockchip_set_mux`, `rockchip_set_pull`,
+`rockchip_set_drive_perpin`, `rockchip_set_schmitt`) are **the same code** in both
+barebox and Linux. Everything above them is what differs.
