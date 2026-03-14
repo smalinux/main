@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "AUBoard-15P.md",
+                "file": "pinctrl subsystem.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "AUBoard-15P"
+              "title": "pinctrl subsystem"
             }
           }
         ]
@@ -78,7 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 405.5
+    "width": 288.5
   },
   "right": {
     "id": "677a68aeac7f059d",
@@ -195,9 +195,12 @@
   },
   "active": "e0e1e770d577effd",
   "lastOpenFiles": [
+    "AUBoard-15P.md",
+    "pinctrl subsystem.md",
+    "pinctrl subsystem.md.tmp.245520.1773523299373",
+    "prompts.md",
     "AUBoard-15P.md.tmp.213217.1773512564286",
     "main.md",
-    "AUBoard-15P.md",
     "cache.tmp",
     "output/10008622_haushälterin.md",
     "output/10010219_kaufmännischer-angestellter-mwd-mit-buchhaltungskenntnissen.md",
@@ -223,14 +226,10 @@
     "output/7754144_testautomatisiererin.md",
     "scraper.log.1",
     "output/7756142_senior-hardware-entwickler-wmx.md",
-    "output/7722974_embedded-linux-software-engineer-mwd.md",
-    "output/7734041_ot-security-specialist-wmd.md",
     "cache.json",
     "scraper.py.tmp.2634217.1773172833778",
     "scraper.py.tmp.2634217.1773172827136",
     "scraper.py.tmp.2634217.1773172792133",
-    "scraper.py.tmp.2634217.1773172777418",
-    "scraper.py.tmp.2634217.1773172768921",
     "assets/Pasted image 20260223223812.png",
     "Pasted image 20260223223716.png",
     "Pasted image 20260223223642.png",

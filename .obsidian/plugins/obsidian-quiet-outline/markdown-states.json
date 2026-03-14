@@ -1135,7 +1135,7 @@
     "expandedKeys": []
   },
   "AUBoard-15P.md": {
-    "scroll": 4.498263888888889,
+    "scroll": 106.2300849707913,
     "cursor": {
       "from": {
         "line": 0,
@@ -1148,7 +1148,40 @@
     },
     "expandedKeys": [
       "item-1-0",
-      "item-2-2"
+      "item-2-2",
+      "item-2-6",
+      "item-2-15"
     ]
+  },
+  "pinctrl subsystem.md": {
+    "scroll": 279.8229166666667,
+    "cursor": {
+      "from": {
+        "line": 337,
+        "ch": 47
+      },
+      "to": {
+        "line": 337,
+        "ch": 47
+      }
+    },
+    "expandedKeys": [
+      "item-1-0",
+      "item-2-11"
+    ]
+  },
+  "prompts.md": {
+    "scroll": 0,
+    "cursor": {
+      "from": {
+        "line": 8,
+        "ch": 0
+      },
+      "to": {
+        "line": 8,
+        "ch": 0
+      }
+    },
+    "expandedKeys": []
   }
 }
