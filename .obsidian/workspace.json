@@ -1,0 +1,245 @@
+{
+  "main": {
+    "id": "9acb2d65f1ea908b",
+    "type": "split",
+    "children": [
+      {
+        "id": "474d0b500abbf247",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e0e1e770d577effd",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "main.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "main"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "dde35c31cb611644",
+    "type": "split",
+    "children": [
+      {
+        "id": "68771e474479eaf3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c97c5783afda50a8",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "byModifiedTime",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "3d87787829ccaeb5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "2679ac61a929f1cc",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 405.5
+  },
+  "right": {
+    "id": "677a68aeac7f059d",
+    "type": "split",
+    "children": [
+      {
+        "id": "a2e36c6935a8a025",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9c7354deef3f7602",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "README.md",
+                "collapseAll": true,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for README"
+            }
+          },
+          {
+            "id": "ebdd097ed49cf240",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "prompt.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from prompt"
+            }
+          },
+          {
+            "id": "1ea0581ecc5cc8dd",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "127a11f8424c7cdf",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "adb77ea3ae051b91",
+            "type": "leaf",
+            "state": {
+              "type": "quiet-outline",
+              "state": {},
+              "icon": "lines-of-text",
+              "title": "Quiet Outline"
+            }
+          },
+          {
+            "id": "814b98fc8e6f6b09",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "README.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of README"
+            }
+          }
+        ],
+        "currentTab": 4
+      }
+    ],
+    "direction": "horizontal",
+    "width": 340.5
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "e0e1e770d577effd",
+  "lastOpenFiles": [
+    "main.md",
+    "cache.tmp",
+    "output/10008622_haushälterin.md",
+    "output/10010219_kaufmännischer-angestellter-mwd-mit-buchhaltungskenntnissen.md",
+    "output/10013243_kommunikationsmanagerin-pr.md",
+    "output/7764320_embedded-software-entwickler-wmd.md",
+    "output/7756325_electronic-development-engineer-mwd.md",
+    "output/10013111_systemingenieurin.md",
+    "output/7756091_client-support-engineer-mwd.md",
+    "scraper.log.3",
+    "output/10008952_asset-manager-immobilien-mwd.md",
+    "output/10008896_country-sales-manager-renovation-mwd.md",
+    "output/7711049_senior-devops-engineer-wmd-java-finanzonline.md",
+    "scraper.log.2",
+    "output/10012849_data-software-engineer-wdm.md",
+    "output/7760102_java-devops-engineer-wmd-steueranwendungen.md",
+    "output/10012857_außendienstmitarbeiterin-für-hochwertige-weine-weinsommelier.md",
+    "output/7761764_java-fullstack-developer-wmd-für-bildungsanwendungen.md",
+    "output/7736426_embedded-software-entwickler-mwd-medizintechnik.md",
+    "output/7722638_applikationsentwickler-für-c-linux-mwd.md",
+    "output/7709120_senior-application-manager-wmd-ehealth-devops-kubernetesopen.md",
+    "output/7746536_softwareentwickler-c-für-embedded-linux-systeme-mwd.md",
+    "output/7711025_java-fullstack-developer-wmd-für-justice-solutions.md",
+    "output/7754144_testautomatisiererin.md",
+    "scraper.log.1",
+    "output/7756142_senior-hardware-entwickler-wmx.md",
+    "output/7722974_embedded-linux-software-engineer-mwd.md",
+    "output/7734041_ot-security-specialist-wmd.md",
+    "output/7761659_anwendungsentwickler-mwd.md",
+    "output/7709123_application-manager-wmd-ehealth.md",
+    "cache.json",
+    "scraper.py.tmp.2634217.1773172833778",
+    "scraper.py.tmp.2634217.1773172827136",
+    "scraper.py.tmp.2634217.1773172792133",
+    "scraper.py.tmp.2634217.1773172777418",
+    "scraper.py.tmp.2634217.1773172768921",
+    "assets/Pasted image 20260223223812.png",
+    "Pasted image 20260223223716.png",
+    "Pasted image 20260223223642.png",
+    "external/linux/Documentation/dev-tools/kunit/kunit_suitememorydiagram.svg",
+    "external/linux/Documentation/arch/x86/suspend.svg",
+    "external/linux/Documentation/arch/x86/resume.svg",
+    "external/linux/Documentation/admin-guide/blockdev/drbd/DRBD-data-packets.svg",
+    "external/linux/Documentation/admin-guide/blockdev/drbd/DRBD-8.3-data-packets.svg",
+    "external/linux/Documentation/admin-guide/media/ipu6_isys_graph.svg",
+    "external/linux/Documentation/admin-guide/media/ipu3_rcb.svg"
+  ]
+}
