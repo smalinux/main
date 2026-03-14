@@ -1154,20 +1154,21 @@
     ]
   },
   "pinctrl subsystem.md": {
-    "scroll": 279.8229166666667,
+    "scroll": 0,
     "cursor": {
       "from": {
-        "line": 337,
-        "ch": 47
+        "line": 2,
+        "ch": 0
       },
       "to": {
-        "line": 337,
-        "ch": 47
+        "line": 2,
+        "ch": 0
       }
     },
     "expandedKeys": [
       "item-1-0",
-      "item-2-11"
+      "item-2-1",
+      "item-2-15"
     ]
   },
   "prompts.md": {

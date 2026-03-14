@@ -1,12 +1,294 @@
 # Pinctrl Subsystem: Linux vs Barebox Design Differences
 
-## Why barebox pinctrl is much smaller
+---
+
+## Part 1 — Big Picture: All the Keywords Explained
+
+### The hardware reality first
+
+Imagine an SoC with 100 physical pads on the chip package. Each pad can be:
+- A UART TX pin
+- A SPI CLK pin
+- A GPIO
+- Pull-up or pull-down
+- Drive strength high or low
+
+There is a **pinctrl hardware block** inside the SoC — a set of registers. You write to those registers and the pad changes behavior. That's all pinctrl ultimately does: **write some registers**.
+
+We'll use one running example throughout: a UART peripheral that needs two pads (TX and RX).
+
+---
+
+### Controller vs Consumer
+
+**Controller** = the pinctrl hardware block + the driver for it.
+It owns the registers. It knows how to write them. There is usually one per SoC (sometimes a few for different power domains).
+
+**Consumer** = any driver that *needs* its pins configured before it can work.
+The UART driver is a consumer. It doesn't know how to write the pinctrl registers — that's not its job. It just says: "I need my pins set up in the default state." The UART driver *consumes* the pinctrl service.
+
+```
+┌─────────────────────────────────────┐
+│  SoC                                │
+│                                     │
+│  ┌──────────────┐  ┌─────────────┐  │
+│  │ pinctrl HW   │  │  UART HW    │  │
+│  │ (registers)  │  │             │  │
+│  └──────┬───────┘  └──────┬──────┘  │
+│         │ controls        │ uses    │
+│  ┌──────┴───────┐  ┌──────┴──────┐  │
+│  │ pinctrl      │◄─│ UART        │  │
+│  │ driver       │  │ driver      │  │
+│  │ (controller) │  │ (consumer)  │  │
+│  └──────────────┘  └─────────────┘  │
+└─────────────────────────────────────┘
+```
+
+In DT, the consumer has a property pointing to its pin configuration:
+```dts
+/* Consumer: the UART node */
+uart0: uart@10000 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&uart0_pins>;   /* ← points to config inside the controller */
+};
+
+/* Controller: the pinctrl node owns uart0_pins */
+pinctrl: pinctrl@20000 {
+    uart0_pins: uart0-pins {
+        rockchip,pins = <1 10 2 &pcfg_pull_up>,   /* bank1, pin10, mux2, pull-up */
+                        <1 11 2 &pcfg_pull_up>;    /* bank1, pin11, mux2, pull-up */
+    };
+};
+```
+
+---
+
+### State
+
+A **state** is a named configuration. The most common state is `"default"` — what the pins should be when the device is active. Another common state is `"sleep"` — what the pins should be when the system suspends (maybe drive them low to save power).
+
+The consumer says: "I want state *default*" or "I want state *sleep*."
+
+States come from `pinctrl-names` in DT:
+```dts
+pinctrl-names = "default", "sleep";
+pinctrl-0 = <&uart0_default_pins>;   /* state index 0 = "default" */
+pinctrl-1 = <&uart0_sleep_pins>;     /* state index 1 = "sleep"   */
+```
+
+---
+
+### Function and Group
+
+These two are paired. They describe **what a set of pins does**.
+
+**Function** = a named peripheral function. Example: `"uart0"`, `"spi1"`, `"i2c2"`. This is what you're muxing *to*. The IOMUX register field gets set to the value that connects the pad to the UART block inside the SoC.
+
+**Group** = the specific set of pins that implement a function. Example: function `"uart0"` might have two groups: `"uart0-default"` (TX+RX on pins 10,11) and `"uart0-alt"` (TX+RX on pins 20,21 — alternate routing on a different physical location on the package).
+
+Together they answer: **which pins (group) are being set to which mux mode (function).**
+
+```
+Function: "uart0"
+  ├── Group: "uart0-default"  → pins [10, 11], mux value = 2
+  └── Group: "uart0-alt"      → pins [20, 21], mux value = 2
+```
+
+Linux needs this abstraction because the core has to manage it generically across hundreds of SoC drivers. The core asks: "give me all groups for function uart0" and picks the right one based on what the DT says.
+
+---
+
+### Selector
+
+A **selector** is just a numeric index (integer ID) for a group or function, used internally by Linux.
+
+Linux resolves names to selectors at `pinctrl_get()` time so that at `pinctrl_select_state()` time it doesn't have to do string comparisons — it just uses the number.
+
+```
+"uart0"           → function selector = 3
+"uart0-default"   → group selector    = 7
+```
+
+Then `set_mux(pctldev, group_selector=7, func_selector=3)` is what actually goes to the driver.
+
+This is purely a Linux optimization — resolve strings once, use IDs thereafter. Barebox skips this entirely.
+
+---
+
+### Map and Map Table
+
+A **map entry** is one row in a translation table that says:
+
+> "Device X, in state Y, needs controller Z to configure group G as function F"
+
+Or for pin config (pull-up etc):
+
+> "Device X, in state Y, needs controller Z to set configs C on pin P"
+
+In code, `struct pinctrl_map`:
+```c
+struct pinctrl_map {
+    const char *dev_name;      /* "uart0" — the consumer */
+    const char *name;          /* "default" — the state name */
+    const char *ctrl_dev_name; /* "pinctrl@20000" — the controller */
+    enum pinctrl_map_type type;/* MUX_GROUP or CONFIGS_PIN */
+    union {
+        struct { const char *function; const char *group; } mux;
+        struct { const char *group_or_pin; unsigned long *configs; } configs;
+    } data;
+};
+```
+
+The **map table** (`pinctrl_maps`) is a global list of all these entries, for all consumers in the system.
+
+Why does Linux need this? Because it was originally designed to also support non-DT platforms (board files) that register mappings statically at compile time. DT is just another way to populate this same table. So the DT gets parsed into maps, and maps get processed into settings. It's an extra translation hop that barebox skips entirely.
+
+---
+
+### Setting
+
+A **setting** is a map entry *after* name resolution — groups and functions have been resolved to selectors, the controller pointer is known (no more strings). It's ready to apply to hardware.
+
+`struct pinctrl_setting`:
+```c
+struct pinctrl_setting {
+    enum pinctrl_map_type type;
+    struct pinctrl_dev *pctldev;  /* actual pointer to controller */
+    union {
+        struct { unsigned int group; unsigned int func; } mux;      /* selectors */
+        struct { unsigned int group_or_pin; unsigned long *configs; } configs;
+    } data;
+};
+```
+
+Each `pinctrl_state` (the named state object) holds a list of settings. When you call `pinctrl_select_state()`, it iterates the settings and calls the driver for each one.
+
+---
+
+### Pin Descriptor (`pin_desc`)
+
+In Linux, every physical pin on the controller has a `struct pin_desc` object, stored in a radix tree. It acts as a **registry of who owns each pin**.
+
+```c
+struct pin_desc {
+    const char *name;            /* "PIN10" or "uart-tx" */
+    unsigned int mux_usecount;   /* how many consumers have claimed this pin */
+    const char *mux_owner;       /* which consumer claimed it: "uart0" */
+    const char *gpio_owner;      /* if claimed as GPIO */
+};
+```
+
+This exists because two different drivers could accidentally try to mux the same physical pin — one wants it as UART TX, another as SPI CLK. Linux catches this at `pinctrl_select_state()` time and returns an error. Without pin descriptors there is nothing to check against.
+
+---
+
+### Use-count
+
+The **use-count** (`mux_usecount`) on a `pin_desc` tracks how many active consumers have claimed that pin. When count goes from 0→1 the pin is "claimed". When it goes back to 0 the pin is "released" and can be given to someone else.
+
+This solves: "UART driver called `pinctrl_get()`, started using pin 10. Then some other driver also tries to mux pin 10 as SPI CLK. Detect and reject."
+
+In a bootloader (barebox) there is no multitasking, no concurrent drivers — impossible for two things to fight over a pin — so use-count is pointless.
+
+---
+
+### `dev_name` / `ctrl_dev_name` / `name` in a map entry
+
+These three strings are how the Linux map table ties things together **by name** (not pointers, because devices may not be probed yet when the map is registered):
+
+- `dev_name` — name of the **consumer** device, e.g. `"10000.uart"`. This map entry is *for* this device.
+- `ctrl_dev_name` — name of the **controller** device, e.g. `"20000.pinctrl"`. This map entry is *served by* this controller.
+- `name` — the **state name** this map entry belongs to, e.g. `"default"`.
+
+When the consumer calls `pinctrl_get()`, the core scans the global map table looking for entries where `dev_name` matches this consumer. It then looks up `ctrl_dev_name` to get the actual controller pointer. These strings are the glue before the controller pointer is resolved.
+
+---
+
+### Putting it all together: the Linux journey for one UART pin
+
+```
+1. Boot: rockchip_pinctrl_probe()
+   ├── Parse entire DT subtree
+   │   └── For each group node (uart0-pins, spi1-pins, ...):
+   │       ├── Read rockchip,pins property
+   │       ├── Allocate grp->pins[], grp->data[] arrays
+   │       └── Extract config phandles → allocate configs[] array
+   ├── Register all pins → allocate pin_desc per pin → insert into radix tree
+   └── Register functions/groups with core
+
+2. UART driver probe: devm_pinctrl_get_select(dev, "default")
+   │
+   ├── pinctrl_get(uart_dev)
+   │   ├── pinctrl_dt_to_map()          ← read consumer's pinctrl-0 property
+   │   │   ├── find config node (uart0_pins) via phandle
+   │   │   ├── rockchip_dt_node_to_map() ← driver callback
+   │   │   │   ├── look up group "uart0-pins" in pre-parsed info->groups[]
+   │   │   │   ├── alloc pinctrl_map[0]: type=MUX_GROUP, func="uart0", group="uart0-pins"
+   │   │   │   └── alloc pinctrl_map[1,2]: type=CONFIGS_PIN, pin=10, configs=[pull-up]
+   │   │   └── register maps into global pinctrl_maps list
+   │   └── add_setting() for each map:
+   │       ├── resolve "uart0"       → func selector = 3
+   │       ├── resolve "uart0-pins"  → group selector = 7
+   │       └── store in pinctrl_setting (selector numbers + controller pointer)
+   │
+   └── pinctrl_select_state(p, "default")
+       └── pinctrl_commit_state()
+           ├── for each MUX_GROUP setting:
+           │   ├── pin_request(pin=10)  ← check usecount, set owner="uart0"
+           │   └── ops->set_mux(pctldev, group=7, func=3)  ← WRITE REGISTER
+           └── for each CONFIGS_PIN setting:
+               └── ops->pin_config_set(pctldev, pin=10, [PULL_UP])  ← WRITE REGISTER
+```
+
+### The barebox journey for the same UART pin
+
+```
+1. Boot: rockchip_pinctrl_probe()
+   └── map registers, add to pinctrl_list   ← that's ALL
+
+2. UART driver probe: of_pinctrl_select_state_default(np)
+   └── pinctrl_select_state()
+       └── read phandle from pinctrl-0 property
+           └── pinctrl_config_one(uart0_pins node)
+               └── find controller by walking DT parents
+                   └── ops->set_state(pdev, uart0_pins_node)
+                       └── rockchip_pinctrl_set_state()
+                           ├── read rockchip,pins from node on the fly
+                           ├── rockchip_set_mux(bank1, pin10, mux2)  ← WRITE REGISTER
+                           └── rockchip_set_pull(bank1, pin10, PULL_UP)  ← WRITE REGISTER
+```
+
+---
+
+### Keyword reference card
+
+| Keyword | What it is in one line |
+|---|---|
+| **Controller** | The pinctrl HW block + its driver. Owns the registers. |
+| **Consumer** | Any driver that needs its pins set up before it can work (UART, SPI, I2C...). |
+| **State** | A named pin configuration: `"default"`, `"sleep"`, `"idle"`. |
+| **Function** | A mux mode name: `"uart0"`, `"spi1"`. What the pin is being muxed *to*. |
+| **Group** | The set of physical pins that together implement a function. Paired with Function. |
+| **Selector** | Integer ID for a group or function. Linux resolves name→ID once at get time. |
+| **Map entry** | One row in a table: consumer X, state Y, controller Z, mux group G to function F. |
+| **Map table** | Global list of all map entries for all consumers in the system. |
+| **Setting** | A resolved map entry: controller pointer + numeric selectors. Ready to apply. |
+| **Pin descriptor** | Per-physical-pin object in a radix tree. Tracks name, owner, use-count. |
+| **Use-count** | How many consumers currently have a pin's mux claimed. Prevents conflicts. |
+| **dev_name** | String name of the consumer in a map entry (before the pointer is resolved). |
+| **ctrl_dev_name** | String name of the controller in a map entry (before the pointer is resolved). |
+| **name** (in map) | The state name (`"default"`, `"sleep"`) this map entry belongs to. |
+| **Hog** | When the controller claims some of its own pins at probe time (self-consumer). |
+
+---
+
+## Part 2 — Why barebox is smaller: Design Differences
 
 The core philosophy difference: **Linux builds a full in-memory model of the DT; barebox treats the DT as the model and operates on it directly at use time.**
 
 ---
 
-## 1. Lazy DT parsing (you already know this)
+### 1. Lazy DT parsing (you already know this)
 
 **Linux** parses DT in two distinct phases:
 
@@ -35,7 +317,7 @@ No pre-parsed groups, no pre-parsed configs, no intermediate structures.
 
 ---
 
-## 2. No map table / no intermediate representation layer
+### 2. No map table / no intermediate representation layer
 
 **Linux** has a multi-level translation pipeline:
 
@@ -47,7 +329,7 @@ DT node
                            → pinconf_apply_setting()    (calls driver pin_config_set())
 ```
 
-Each stage allocates heap memory. The map table is a global list of `struct pinctrl_maps` nodes. Each entry in a map is named (carries `dev_name`, `ctrl_dev_name`, `name`). `add_setting()` resolves the string names to numeric group/function selectors by iterating over all registered groups/functions. All of this just to translate the DT into what the driver needs to do.
+Each stage allocates heap memory. The map table is a global list of `struct pinctrl_maps` nodes. Each entry in a map carries `dev_name`, `ctrl_dev_name`, `name` strings. `add_setting()` resolves the string names to numeric group/function selectors. All of this just to translate the DT into what the driver needs to do.
 
 **Barebox** collapses the entire pipeline to a single call:
 
@@ -59,7 +341,7 @@ No maps, no settings, no selectors. The driver callback gets the raw DT node and
 
 ---
 
-## 3. No group/function abstraction layer
+### 3. No group/function abstraction layer
 
 **Linux** mandates a rich ops interface for the driver:
 
@@ -92,7 +374,7 @@ No group enumeration, no function enumeration, no name-to-selector resolution. T
 
 ---
 
-## 4. No pin descriptor registration
+### 4. No pin descriptor registration
 
 **Linux** registers every physical pin at probe time:
 
@@ -105,7 +387,7 @@ No group enumeration, no function enumeration, no name-to-selector resolution. T
 
 ---
 
-## 5. No use-count / ownership tracking
+### 5. No use-count / ownership tracking
 
 **Linux** tracks who owns each pin's mux:
 
@@ -118,7 +400,7 @@ No group enumeration, no function enumeration, no name-to-selector resolution. T
 
 ---
 
-## 6. No `struct pinctrl` / `struct pinctrl_state` as rich objects
+### 6. No `struct pinctrl` / `struct pinctrl_state` as rich objects
 
 In **Linux**:
 
@@ -161,9 +443,9 @@ A `pinctrl_state` IS a DT property. A `pinctrl` IS a node. No heap allocation fo
 
 ---
 
-## 7. No locking infrastructure
+### 7. No locking infrastructure
 
-**Linux** has six locking points:
+**Linux** has five locking points:
 - `pinctrl_list_mutex` — global list of pinctrl consumer handles
 - `pinctrl_maps_mutex` — global map table
 - `pinctrldev_list_mutex` — global device list
@@ -174,7 +456,7 @@ A `pinctrl_state` IS a DT property. A `pinctrl` IS a node. No heap allocation fo
 
 ---
 
-## 8. No sleep/PM state management
+### 8. No sleep/PM state management
 
 **Linux** has:
 - `pctldev->hog_default` and `pctldev->hog_sleep` states
@@ -182,103 +464,15 @@ A `pinctrl_state` IS a DT property. A `pinctrl` IS a node. No heap allocation fo
 - Per-driver suspend/resume (e.g. `rockchip_pinctrl_suspend/resume`)
 - The `"sleep"` pinctrl state applied by the PM core
 
-**Barebox** has none of this. Boot, configure, boot.
+**Barebox** has none of this. Boot, configure, done.
 
 ---
 
-## 9. No debugfs
+### 9. No debugfs
 
 **Linux**: `/sys/kernel/debug/pinctrl/<device>/` exposes pins, pinmux, pinconf, gpio-ranges, pinmux-functions, pinmux-pins for every registered controller.
 
 **Barebox**: none.
-
----
-
-## The full Linux flow vs the full barebox flow
-
-### Linux — what happens from probe to hardware write
-
-```
-1. PROBE (driver)
-   rockchip_pinctrl_parse_dt()
-     → for every function child in DT:
-         rockchip_pinctrl_parse_functions()
-           → allocate func->groups[] array
-           → for every group child:
-               rockchip_pinctrl_parse_groups()
-                 → read rockchip,pins property
-                 → allocate grp->pins[], grp->data[] arrays
-                 → for each pin tuple:
-                     resolve bank, store pin number, mux func
-                     pinconf_generic_parse_dt_config()  ← reads config phandle
-                       → allocate configs[] array
-   devm_pinctrl_register()
-     → pinctrl_register_pins()   ← allocate pin_desc per pin → insert into radix tree
-     → pinmux_check_ops()
-     → pinconf_check_ops()
-     → create_pinctrl()          ← hog the controller's own pins
-
-2. CONSUMER PROBE (e.g. UART driver calls devm_pinctrl_get_select())
-   pinctrl_get()
-     → create_pinctrl()
-         → pinctrl_dt_to_map()
-             → for each pinctrl-N property on consumer node:
-                 dt_to_map_one_config()
-                   → find pctldev by walking DT parents
-                   → rockchip_dt_node_to_map()    ← driver callback
-                       → look up group by name in info->groups[]
-                       → allocate pinctrl_map[] (MUX_GROUP + CONFIGS_PIN per pin)
-                   → dt_remember_or_free_map()
-                       → pinctrl_register_mappings()  ← add to global pinctrl_maps list
-         → for_each_pin_map():   ← iterate global map table
-             add_setting()
-               → find or create pinctrl_state by name
-               → allocate pinctrl_setting
-               → pinmux_map_to_setting()
-                   → resolve function name → func selector
-                   → resolve group name   → group selector
-                   → store selectors in setting->data.mux
-               → append to state->settings list
-
-3. SELECT STATE
-   pinctrl_select_state()
-     → pinctrl_commit_state()
-         → for each setting in state->settings:
-             pinmux_enable_setting()
-               → pin_request()     ← check/set mux_owner, usecount
-               → ops->set_mux(pctldev, group_selector, func_selector)
-             pinconf_apply_setting()
-               → ops->pin_config_set(pctldev, pin, configs[], num_configs)
-```
-
-### Barebox — what happens from probe to hardware write
-
-```
-1. PROBE (driver)
-   rockchip_pinctrl_probe()
-     → map grf/pmu regmaps
-     → pinctrl_register(&info->pctl_dev)
-         → list_add_tail into pinctrl_list
-         → pinctrl_select_state_default(pdev->dev)  ← hog own pins if any
-
-2. CONSUMER PROBE (device core calls of_pinctrl_select_state_default())
-   of_pinctrl_select_state()
-     → pinctrl_lookup_state()    ← find "default" in pinctrl-names, return prop ptr
-     → pinctrl_select_state()
-         → read phandles from pinctrl-0 property
-         → for each phandle:
-             np_config = of_find_node_by_phandle(phandle)
-             pinctrl_config_one()
-               → walk DT parents to find controller node
-               → of_device_ensure_probed()  ← probe controller if not yet probed
-               → find pdev in pinctrl_list
-               → pdev->ops->set_state(pdev, np_config)
-                   → rockchip_pinctrl_set_state()
-                       → read rockchip,pins from np_config on the fly
-                       → for each <bank pin mux config_phandle>:
-                           rockchip_set_mux()    ← write register NOW
-                           rockchip_set_pull()   ← write register NOW
-```
 
 ---
 
@@ -300,40 +494,3 @@ A `pinctrl_state` IS a DT property. A `pinctrl` IS a node. No heap allocation fo
 | Driver ops required           | ~8 callbacks                                    | 1 callback (`set_state`)  |
 | `struct pinctrl` size         | Full object with states list, dt_maps, kref     | Just `device_node`        |
 | `struct pinctrl_state` size   | Object with settings list                       | Just `property` (DT prop) |
-____
-```
-  What barebox eliminated, in detail
-
-  1. No intermediate map table
-
-  Linux has a 3-stage pipeline: DT → pinctrl_map[] (global list) → pinctrl_setting[] per state → hardware. Each stage allocates heap memory and does name resolution. Barebox collapses this
-  to: DT → hardware, directly in set_state().
-
-  2. No probe-time DT parsing in the driver
-
-  Linux rockchip's rockchip_pinctrl_parse_dt() at probe time walks the entire DT subtree — every function, every group, every rockchip,pins tuple, every config phandle — and builds
-  info->functions[] and info->groups[] arrays with all configs pre-extracted. This happens regardless of whether those pin groups are ever used. Barebox reads only what's needed, only when
-  it's needed.
-
-  3. No group/function abstraction layer
-
-  Linux requires the driver to implement ~8 callbacks (get_groups_count, get_group_name, get_group_pins, get_functions_count, get_function_name, get_function_groups, set_mux, dt_node_to_map).
-   The core uses these to resolve string names to numeric selectors at pinctrl_get() time, stores the selectors, then calls set_mux(group_selector, func_selector) later. Barebox has one
-  callback: set_state(pdev, np) — no selector indirection at all.
-
-  4. No pin descriptor radix tree
-
-  Linux allocates a struct pin_desc for every physical pin at probe time and inserts them into a radix tree. Each carries name, mux_usecount, mux_owner, mux_setting pointer, gpio_owner,
-  mux_lock. Barebox has none of this.
-
-  5. No use-count / ownership tracking
-
-  Linux prevents two consumers from claiming the same pin's mux. Barebox just writes unconditionally — in a bootloader there's no concurrent use to protect against.
-
-  6. struct pinctrl and struct pinctrl_state are trivial
-
-  In barebox, struct pinctrl is just a device_node, and struct pinctrl_state is just a property (the raw DT property). In Linux they are full objects with lists, reference counts, and
-  heap-allocated sub-objects.
-
-  7. No locking, no PM/sleep states, no debugfs
-```
