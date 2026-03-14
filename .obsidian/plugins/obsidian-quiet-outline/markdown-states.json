@@ -1133,5 +1133,22 @@
       }
     },
     "expandedKeys": []
+  },
+  "AUBoard-15P.md": {
+    "scroll": 4.498263888888889,
+    "cursor": {
+      "from": {
+        "line": 0,
+        "ch": 0
+      },
+      "to": {
+        "line": 0,
+        "ch": 0
+      }
+    },
+    "expandedKeys": [
+      "item-1-0",
+      "item-2-2"
+    ]
   }
 }
