@@ -704,3 +704,88 @@ barebox set_state(pdev, np)
 The actual hardware-touching functions (`rockchip_set_mux`, `rockchip_set_pull`,
 `rockchip_set_drive_perpin`, `rockchip_set_schmitt`) are **the same code** in both
 barebox and Linux. Everything above them is what differs.
+
+---
+
+## Part 4 — What does "mux" actually mean?
+
+### Mux is per-pin, not per-group
+
+**Mux** = multiplexer. One physical pad on the chip package can be wired internally
+to **multiple peripherals** inside the SoC. A small register field (typically 2-4 bits)
+selects which one is actually connected at any given time.
+
+```
+                    ┌─── UART0 TX  (mux value = 1)
+                    │
+Physical pad ───────┼─── SPI1 CLK  (mux value = 2)
+  (one pin)         │
+                    ├─── I2C2 SDA  (mux value = 3)
+                    │
+                    └─── GPIO      (mux value = 0)
+                              ↑
+                    write this number into the IOMUX register
+                    for this pad to pick one connection
+```
+
+Writing that value is the mux operation — **selecting which peripheral gets connected
+to one physical pad**. It happens one pad at a time, each pad has its own register field.
+
+---
+
+### Group and Function are the software layer on top
+
+When you configure a UART you need **two pads** (TX + RX). Those two pads together
+are called a **group** — the named collection of pads that together serve one purpose.
+Each pad still has its own mux register write, but you configure them together because
+they belong to the same use case.
+
+**Function** is the name of what the group is being muxed to: `"uart0"`, `"spi1"`, `"i2c2"`.
+
+```
+Function "uart0"
+  └── Group "uart0-default"
+        ├── pad 10 → write mux=2 → connects to UART0 TX internally
+        └── pad 11 → write mux=2 → connects to UART0 RX internally
+```
+
+So the three terms relate like this:
+
+| Term | Level | What it is |
+|---|---|---|
+| **Mux** | Hardware, per pad | The register write that connects one pad to one peripheral |
+| **Group** | Software, collection | Named set of pads that together serve one use case |
+| **Function** | Software, label | The name of the peripheral/use case the group is muxed to |
+
+When Linux calls `set_mux(group_selector, func_selector)` it means: *for every pad
+in this group, write the mux register value that connects it to this function.* It
+loops over all pads in the group, but the actual register write is still one pad at
+a time.
+
+---
+
+## Part 5 — What does "pad" mean?
+
+Same thing as "pin" — just a different word for the same physical thing.
+
+**Pad** is the hardware/silicon term: the metal contact point on the chip die that
+connects to the package lead.
+
+**Pin** is the board/package term: the lead on the chip package that you solder to
+the PCB.
+
+```
+Silicon die                 Chip package
+  ┌──────────┐                ┌──────────┐
+  │  ████    │  bond wire     │          ├──── pin (leg on package)
+  │  ████ ───┼────────────────┤  pad     │
+  │  (circuit)│               │          ├──── pin
+  └──────────┘                └──────────┘
+         ↑                         ↑
+       "pad"                     "pin"
+   (on the die)            (on the package)
+```
+
+In pinctrl documentation and driver code the two words are used interchangeably.
+When you see `pad` in a datasheet or driver comment it means the same physical thing
+you are already thinking of as "pin." No difference in meaning for pinctrl purposes.
