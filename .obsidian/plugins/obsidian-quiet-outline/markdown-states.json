@@ -1154,15 +1154,15 @@
     ]
   },
   "pinctrl subsystem.md": {
-    "scroll": 723.1889880952381,
+    "scroll": 0,
     "cursor": {
       "from": {
-        "line": 92,
+        "line": 672,
         "ch": 47
       },
       "to": {
-        "line": 92,
-        "ch": 50
+        "line": 672,
+        "ch": 47
       }
     },
     "expandedKeys": [

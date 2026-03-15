@@ -779,7 +779,7 @@ Silicon die                 Chip package
   ┌──────────┐                ┌──────────┐
   │  ████    │  bond wire     │          ├──── pin (leg on package)
   │  ████ ───┼────────────────┤  pad     │
-  │  (circuit)│               │          ├──── pin
+  │ (circuit)│                │          ├──── pin
   └──────────┘                └──────────┘
          ↑                         ↑
        "pad"                     "pin"
