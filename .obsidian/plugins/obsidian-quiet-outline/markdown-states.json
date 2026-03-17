@@ -1154,15 +1154,15 @@
     ]
   },
   "pinctrl subsystem.md": {
-    "scroll": 0,
+    "scroll": 1401.0178545078943,
     "cursor": {
       "from": {
-        "line": 672,
-        "ch": 47
+        "line": 1433,
+        "ch": 0
       },
       "to": {
-        "line": 672,
-        "ch": 47
+        "line": 1433,
+        "ch": 0
       }
     },
     "expandedKeys": [
@@ -1171,7 +1171,11 @@
       "item-2-15",
       "item-2-26",
       "item-3-29",
-      "item-2-35"
+      "item-2-35",
+      "item-2-39",
+      "item-3-42",
+      "item-3-48",
+      "item-2-57"
     ]
   },
   "prompts.md": {
