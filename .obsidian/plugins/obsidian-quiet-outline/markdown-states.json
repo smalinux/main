@@ -171,11 +171,13 @@
         "ch": 0
       },
       "to": {
-        "line": 0,
-        "ch": 0
+        "line": 172,
+        "ch": 3
       }
     },
-    "expandedKeys": []
+    "expandedKeys": [
+      "item-1-2"
+    ]
   },
   "old/clock/clk.md": {
     "scroll": 0,
