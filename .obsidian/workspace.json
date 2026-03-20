@@ -4,24 +4,39 @@
     "type": "split",
     "children": [
       {
-        "id": "474d0b500abbf247",
+        "id": "ff1af76353fc43ab",
         "type": "tabs",
         "children": [
           {
-            "id": "e0e1e770d577effd",
+            "id": "0217f74b647b6c43",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "BP-CC33XXMOD.md",
-                "mode": "preview",
+                "file": "main.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "BP-CC33XXMOD"
+              "title": "main"
+            }
+          },
+          {
+            "id": "97ba9b35690f1981",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "main.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "main"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -94,7 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "BP-CC33XXMOD.md",
+                "file": "main.md",
                 "collapseAll": true,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for BP-CC33XXMOD"
+              "title": "Backlinks for main"
             }
           },
           {
@@ -193,19 +208,21 @@
       "bases:Create new base": false
     }
   },
-  "active": "e0e1e770d577effd",
+  "active": "97ba9b35690f1981",
   "lastOpenFiles": [
+    "embedded-linux-chip-plan.md",
+    "main.md",
+    "embedded-linux-chip-plan.md.tmp.1760231.1774002448161",
+    "AUBoard-15P.md",
+    "BP-CC33XXMOD.md",
     "pinctrl subsystem.md",
     "Untitled.md",
-    "BP-CC33XXMOD.md",
     "pinctrl subsystem.md.tmp.1326477.1773775114831",
     "pinctrl subsystem.md.tmp.1326477.1773774625915",
-    "main.md",
     "pinctrl subsystem.md.tmp.258591.1773592631137",
     "pinctrl subsystem.md.tmp.258591.1773591966381",
     "pinctrl subsystem.md.tmp.245520.1773525910649",
     "pinctrl subsystem.md.tmp.245520.1773525329873",
-    "AUBoard-15P.md",
     "pinctrl subsystem.md.tmp.245520.1773523299373",
     "prompts.md",
     "AUBoard-15P.md.tmp.213217.1773512564286",
@@ -217,7 +234,6 @@
     "output/7756325_electronic-development-engineer-mwd.md",
     "output/10013111_systemingenieurin.md",
     "output/7756091_client-support-engineer-mwd.md",
-    "scraper.log.3",
     "output/10008952_asset-manager-immobilien-mwd.md",
     "output/10008896_country-sales-manager-renovation-mwd.md",
     "output/7711049_senior-devops-engineer-wmd-java-finanzonline.md",
@@ -230,7 +246,6 @@
     "output/7709120_senior-application-manager-wmd-ehealth-devops-kubernetesopen.md",
     "output/7746536_softwareentwickler-c-für-embedded-linux-systeme-mwd.md",
     "output/7711025_java-fullstack-developer-wmd-für-justice-solutions.md",
-    "output/7754144_testautomatisiererin.md",
     "assets/Pasted image 20260223223812.png",
     "Pasted image 20260223223716.png",
     "Pasted image 20260223223642.png",

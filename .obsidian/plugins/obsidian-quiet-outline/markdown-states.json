@@ -1126,18 +1126,18 @@
     "scroll": 0,
     "cursor": {
       "from": {
-        "line": 3,
-        "ch": 6
+        "line": 23,
+        "ch": 0
       },
       "to": {
-        "line": 3,
-        "ch": 6
+        "line": 23,
+        "ch": 0
       }
     },
     "expandedKeys": []
   },
   "AUBoard-15P.md": {
-    "scroll": 106.2300849707913,
+    "scroll": 0,
     "cursor": {
       "from": {
         "line": 0,
@@ -1207,5 +1207,28 @@
       }
     },
     "expandedKeys": []
+  },
+  "embedded-linux-chip-plan.md": {
+    "scroll": 0,
+    "cursor": {
+      "from": {
+        "line": 444,
+        "ch": 0
+      },
+      "to": {
+        "line": 444,
+        "ch": 0
+      }
+    },
+    "expandedKeys": [
+      "item-1-0",
+      "item-2-2",
+      "item-2-6",
+      "item-2-14",
+      "item-2-20",
+      "item-2-24",
+      "item-2-28",
+      "item-2-32"
+    ]
   }
 }
