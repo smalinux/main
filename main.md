@@ -20,4 +20,13 @@
   10. Qualcomm — Wireless, mobile processors, RF
 
 https://www.mouser.de/manufacturer/
+https://www.ti.com/product-category/new-products.html
 
+TI AM335 Processor SDK ? عايز اعرف ايه هو دا واستخدمه
+	It seems this is non standard way from TI for AM335, but important.
+	https://www.ti.com/tool/download/PROCESSOR-SDK-LINUX-AM335X/09.01.00.001
+
+
+Google image: SK-AM62B-P1
+Claude: AM62 Starter Kit
+	what is this board? what is special about it?

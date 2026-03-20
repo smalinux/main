@@ -1123,15 +1123,15 @@
     "expandedKeys": []
   },
   "main.md": {
-    "scroll": 0,
+    "scroll": 15.000592417061611,
     "cursor": {
       "from": {
-        "line": 23,
-        "ch": 0
+        "line": 24,
+        "ch": 53
       },
       "to": {
-        "line": 23,
-        "ch": 0
+        "line": 24,
+        "ch": 53
       }
     },
     "expandedKeys": []
