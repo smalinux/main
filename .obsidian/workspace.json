@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "main.md",
+                "file": "prompts.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "main"
+              "title": "prompts"
             }
           }
         ],
@@ -210,8 +210,8 @@
   },
   "active": "97ba9b35690f1981",
   "lastOpenFiles": [
-    "embedded-linux-chip-plan.md",
     "main.md",
+    "embedded-linux-chip-plan.md",
     "embedded-linux-chip-plan.md.tmp.1760231.1774002448161",
     "AUBoard-15P.md",
     "BP-CC33XXMOD.md",
